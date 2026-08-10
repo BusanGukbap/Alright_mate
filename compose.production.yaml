@@ -1,0 +1,150 @@
+services:
+  image_reference_preflight:
+    image: busybox:1.37.0-musl@sha256:fc6dddc4c44b1bfe37f41cae8e67d1693828e8f42a91862816d7953e2c9d3f23
+    restart: "no"
+    network_mode: none
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges=true
+    environment:
+      API_IMAGE: ${API_IMAGE:?API_IMAGE must be an immutable digest reference}
+      MIGRATION_IMAGE: ${MIGRATION_IMAGE:?MIGRATION_IMAGE must be an immutable digest reference}
+      WEB_IMAGE: ${WEB_IMAGE:?WEB_IMAGE must be an immutable digest reference}
+    command:
+      - /bin/sh
+      - -euc
+      - |
+        for reference in "$$API_IMAGE" "$$MIGRATION_IMAGE" "$$WEB_IMAGE"; do
+          name="$${reference%@sha256:*}"
+          digest="$${reference##*@sha256:}"
+          if [ -z "$$name" ] || [ "$$name" = "$$reference" ] || [ "$${#digest}" -ne 64 ]; then
+            echo "production image must use name@sha256:<64 lower-case hex>" >&2
+            exit 1
+          fi
+          case "$$digest" in
+            *[!0-9a-f]*)
+              echo "production image digest must be lower-case hexadecimal" >&2
+              exit 1
+              ;;
+          esac
+        done
+
+  db:
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB must be set for production}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set for production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set for production}
+
+  migrate:
+    image: ${MIGRATION_IMAGE:?MIGRATION_IMAGE must be an immutable digest reference}
+    build: !reset null
+    environment:
+      GOOSE_DBSTRING: ${DATABASE_URL:?DATABASE_URL must be set for production}
+    depends_on:
+      image_reference_preflight:
+        condition: service_completed_successfully
+
+  api:
+    image: ${API_IMAGE:?API_IMAGE must be an immutable digest reference}
+    build: !reset null
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set for production}
+      OWNER_GITHUB_LOGIN: ${OWNER_GITHUB_LOGIN:?OWNER_GITHUB_LOGIN must be set for production}
+      BUILD_VERSION: ${BUILD_VERSION:?BUILD_VERSION must be set for production}
+    depends_on:
+      image_reference_preflight:
+        condition: service_completed_successfully
+
+  web:
+    image: ${WEB_IMAGE:?WEB_IMAGE must be an immutable digest reference}
+    build: !reset null
+    depends_on:
+      image_reference_preflight:
+        condition: service_completed_successfully
+
+  oauth2_proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy-nightly:latest@sha256:522b5685d761526dcae84cc0bef0037475749608a3564a2c9314db563cd8f099
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges=true
+    environment:
+      OAUTH2_PROXY_CLIENT_ID: ${OAUTH2_PROXY_CLIENT_ID:?OAUTH2_PROXY_CLIENT_ID must be set for production}
+      OAUTH2_PROXY_CLIENT_SECRET: ${OAUTH2_PROXY_CLIENT_SECRET:?OAUTH2_PROXY_CLIENT_SECRET must be set for production}
+      OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_PROXY_COOKIE_SECRET:?OAUTH2_PROXY_COOKIE_SECRET must be set for production}
+      OAUTH2_PROXY_COOKIE_NAME: __Host-alright-mate
+    command:
+      - --config=/etc/oauth2-proxy.cfg
+      - --github-user=${OWNER_GITHUB_LOGIN:?OWNER_GITHUB_LOGIN must be set for production}
+      - --redirect-url=https://${SERVER_NAME:?SERVER_NAME must be set for production}/oauth2/callback
+    expose:
+      - "4180"
+    volumes:
+      - type: bind
+        source: ./deploy/oauth2-proxy/oauth2-proxy.cfg
+        target: /etc/oauth2-proxy.cfg
+        read_only: true
+    networks:
+      - auth
+    tmpfs:
+      - /tmp:mode=1777
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  gateway:
+    environment:
+      SERVER_NAME: ${SERVER_NAME:?SERVER_NAME must be set for production}
+    ports:
+      - name: http
+        target: 8080
+        published: 80
+        protocol: tcp
+        app_protocol: http
+        mode: host
+      - name: https
+        target: 8443
+        published: 443
+        protocol: tcp
+        app_protocol: https
+        mode: host
+    volumes:
+      - type: bind
+        source: ./deploy/nginx/production.conf.template
+        target: /etc/nginx/templates/default.conf.template
+        read_only: true
+      - type: bind
+        source: ${TLS_RUNTIME_DIRECTORY:?TLS_RUNTIME_DIRECTORY must contain UID 101-readable fullchain.pem and privkey.pem}
+        target: /etc/nginx/tls
+        read_only: true
+      - type: bind
+        source: ${ACME_WEBROOT_PATH:?ACME_WEBROOT_PATH must be set for ACME challenges}
+        target: /var/www/certbot
+        read_only: true
+    depends_on:
+      oauth2_proxy:
+        condition: service_started
+        restart: true
+    networks:
+      edge: null
+      api_gateway: null
+      web_gateway: null
+      auth:
+        ipv4_address: ${AUTH_GATEWAY_IP:?AUTH_GATEWAY_IP must be set for production}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'wget -q --no-check-certificate --header="Host: $${SERVER_NAME}" -O /dev/null https://127.0.0.1:8443/healthz && wget -q -O /dev/null http://oauth2_proxy:4180/ready'
+
+networks:
+  auth:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${AUTH_SUBNET:?AUTH_SUBNET must be set for production}

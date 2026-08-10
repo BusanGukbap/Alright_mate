@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Alright Mate encrypted backup nightly
+
+[Timer]
+OnCalendar=*-*-* 02:17:00 Asia/Seoul
+RandomizedDelaySec=20m
+Persistent=true
+Unit=alright-mate-backup.service
+
+[Install]
+WantedBy=timers.target

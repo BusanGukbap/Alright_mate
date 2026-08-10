@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "compose_files": [
+    "compose.yaml",
+    "compose.production.yaml",
+    "compose.observability.yaml",
+    "compose.tls-bootstrap.yaml"
+  ],
+  "public_images": [
+    "busybox@sha256:fc6dddc4c44b1bfe37f41cae8e67d1693828e8f42a91862816d7953e2c9d3f23",
+    "cgr.dev/chainguard/postgres@sha256:e67e686bf76586ff0b87fd42553f2dce5e461cb76e090f502ab129aaef141f12",
+    "dxflrs/garage@sha256:866bd13ed2038ba7e7190e840482bc27234c4afaf77be8cfa439ae088c1e4690",
+    "nginx@sha256:ddde39c6e51f02fde7410c2e9c234cf2d0a4c7bdbbe176aeb37d8ad7ab4eb58c",
+    "prom/prometheus@sha256:508729e0e2d18e11fd742a5a5ca70e557b940a93948c3c95fd0123a6fd538b69",
+    "quay.io/oauth2-proxy/oauth2-proxy-nightly@sha256:522b5685d761526dcae84cc0bef0037475749608a3564a2c9314db563cd8f099",
+    "quay.io/prometheus/node-exporter@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0"
+  ],
+  "authenticated_application_variables": [
+    "API_IMAGE",
+    "MIGRATION_IMAGE",
+    "WEB_IMAGE"
+  ],
+  "authenticated_auxiliary_variables": [
+    "BACKUP_TOOLS_IMAGE"
+  ],
+  "local_only_variables": [
+    "IMAGE_TAG"
+  ]
+}

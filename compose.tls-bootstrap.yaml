@@ -1,0 +1,55 @@
+name: ${COMPOSE_PROJECT_NAME:-alright-mate-tls-bootstrap}
+
+services:
+  gateway:
+    image: nginx:1.30.4-alpine3.24-slim@sha256:ddde39c6e51f02fde7410c2e9c234cf2d0a4c7bdbbe176aeb37d8ad7ab4eb58c
+    restart: unless-stopped
+    user: 101:101
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges=true
+    environment:
+      NGINX_ENVSUBST_FILTER: ^SERVER_NAME$
+      SERVER_NAME: ${SERVER_NAME:?SERVER_NAME must be set for TLS bootstrap}
+    ports:
+      - name: http
+        target: 8080
+        published: 80
+        protocol: tcp
+        app_protocol: http
+        mode: host
+    volumes:
+      - type: bind
+        source: ./deploy/nginx/nginx.conf
+        target: /etc/nginx/nginx.conf
+        read_only: true
+      - type: bind
+        source: ./deploy/nginx/tls-bootstrap.conf.template
+        target: /etc/nginx/templates/default.conf.template
+        read_only: true
+      - type: bind
+        source: ${ACME_WEBROOT_PATH:?ACME_WEBROOT_PATH must be set for TLS bootstrap}
+        target: /var/www/certbot
+        read_only: true
+    tmpfs:
+      - /etc/nginx/conf.d:uid=101,gid=101,mode=0755
+      - /tmp:uid=101,gid=101,mode=1777
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - -O
+        - /dev/null
+        - http://127.0.0.1:8080/healthz
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 3s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

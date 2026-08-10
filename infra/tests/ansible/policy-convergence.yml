@@ -1,0 +1,60 @@
+---
+- name: Validate infrastructure policy filters without host mutation
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    operator_sources:
+      - 203.0.113.10/32
+      - 2001:0DB8:0000:0000::/64
+    drifted_ufw_status: |
+      Status: active
+      [ 1] 22/tcp ALLOW IN Anywhere
+      [ 2] 8080/tcp ALLOW IN Anywhere
+    misleading_ufw_status: |
+      Status: active
+      [ 1] 22/tcp ALLOW IN 198.51.100.27 # alright-mate:ssh:203.0.113.10/32
+      [ 2] 22/tcp (v6) ALLOW IN 2001:db8::/64 # alright-mate:ssh:2001:db8::/64
+      [ 3] 80/tcp ALLOW IN Anywhere # alright-mate:http
+      [ 4] 443/tcp ALLOW IN Anywhere # alright-mate:https
+      [ 5] 80/tcp (v6) ALLOW IN Anywhere (v6) # alright-mate:http
+      [ 6] 443/tcp (v6) ALLOW IN Anywhere (v6) # alright-mate:https
+    managed_ufw_status: |
+      Status: active
+      [ 1] 22/tcp ALLOW IN 203.0.113.10 # alright-mate:ssh:203.0.113.10/32
+      [ 2] 22/tcp (v6) ALLOW IN 2001:db8::/64 # alright-mate:ssh:2001:db8::/64
+      [ 3] 80/tcp ALLOW IN Anywhere # alright-mate:http
+      [ 4] 443/tcp ALLOW IN Anywhere # alright-mate:https
+      [ 5] 80/tcp (v6) ALLOW IN Anywhere (v6) # alright-mate:http
+      [ 6] 443/tcp (v6) ALLOW IN Anywhere (v6) # alright-mate:https
+
+  tasks:
+    - name: Resolve the deterministic desired policy
+      ansible.builtin.set_fact:
+        normalised_operator_sources: >-
+          {{ operator_sources | normalise_operator_ssh_cidrs }}
+
+    - name: Evaluate drifted and converged rule sets
+      ansible.builtin.set_fact:
+        first_run_requires_reset: >-
+          {{ drifted_ufw_status
+             | ufw_policy_requires_reset(normalised_operator_sources) }}
+        misleading_comment_requires_reset: >-
+          {{ misleading_ufw_status
+             | ufw_policy_requires_reset(normalised_operator_sources) }}
+        second_run_requires_reset: >-
+          {{ managed_ufw_status
+             | ufw_policy_requires_reset(normalised_operator_sources) }}
+        reserved_environment_keys: >-
+          {{ 'SERVER_NAME=mate.example.invalid'
+             | runtime_environment_reserved_keys }}
+
+    - name: Require one repair followed by an idempotent second evaluation
+      ansible.builtin.assert:
+        that:
+          - normalised_operator_sources == ['203.0.113.10/32', '2001:db8::/64']
+          - first_run_requires_reset
+          - misleading_comment_requires_reset
+          - not second_run_requires_reset
+          - reserved_environment_keys == []

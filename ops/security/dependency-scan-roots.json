@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "roots": [
+    {
+      "path": "apps/api",
+      "ecosystem": "go",
+      "manifests": [
+        "apps/api/go.mod",
+        "apps/api/go.sum"
+      ],
+      "dependency_scope": "runtime",
+      "trivy_dev_dependencies": "not-applicable",
+      "rationale": "Go module metadata does not distinguish an npm-style development dependency set."
+    },
+    {
+      "path": "apps/api/tools/goose",
+      "ecosystem": "go",
+      "manifests": [
+        "apps/api/tools/goose/go.mod",
+        "apps/api/tools/goose/go.sum"
+      ],
+      "dependency_scope": "operations",
+      "trivy_dev_dependencies": "not-applicable",
+      "rationale": "The isolated Goose module builds the production migration image."
+    },
+    {
+      "path": "apps/web",
+      "ecosystem": "npm",
+      "manifests": [
+        "apps/web/package.json",
+        "apps/web/package-lock.json"
+      ],
+      "dependency_scope": "runtime",
+      "trivy_dev_dependencies": "suppressed",
+      "rationale": "Trivy reports production npm dependencies; build-only packages are not shipped in the static web image."
+    },
+    {
+      "path": "infra/ansible",
+      "ecosystem": "python",
+      "manifests": [
+        "infra/ansible/requirements.txt"
+      ],
+      "dependency_scope": "operations",
+      "trivy_dev_dependencies": "not-applicable",
+      "rationale": "The pinned Python requirements execute the host provisioning contract."
+    },
+    {
+      "path": "tests/delivery",
+      "ecosystem": "python",
+      "manifests": [
+        "tests/delivery/requirements.txt"
+      ],
+      "dependency_scope": "development",
+      "trivy_dev_dependencies": "not-applicable",
+      "rationale": "Python requirements files do not carry npm development-dependency metadata."
+    },
+    {
+      "path": "tests/e2e",
+      "ecosystem": "npm",
+      "manifests": [
+        "tests/e2e/package.json",
+        "tests/e2e/package-lock.json"
+      ],
+      "dependency_scope": "development",
+      "trivy_dev_dependencies": "suppressed",
+      "rationale": "The E2E packages are development-only, are not copied into production images and remain exactly pinned for reproducible test execution."
+    }
+  ]
+}

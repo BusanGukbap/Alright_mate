@@ -1,0 +1,12 @@
+---
+alright_mate_deploy_user: alright-mate
+alright_mate_deploy_group: alright-mate
+operator_user: ubuntu
+operator_ssh_cidrs:
+  - 203.0.113.10/32
+runtime_config_source: null
+runtime_environment_file: null
+api_image_reference: null
+migration_image_reference: null
+web_image_reference: null
+backup_image_reference: null

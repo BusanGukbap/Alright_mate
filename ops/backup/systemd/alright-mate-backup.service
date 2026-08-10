@@ -1,0 +1,42 @@
+[Unit]
+Description=Alright Mate encrypted PostgreSQL backup
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=alright-mate-backup
+Group=alright-mate-backup
+SupplementaryGroups=docker
+EnvironmentFile=/etc/alright-mate/backup.env
+EnvironmentFile=-/etc/alright-mate/backup-release.env
+Environment=DOCKER_CONFIG=/run/alright-mate-backup/docker
+WorkingDirectory=/opt/alright-mate/current
+RuntimeDirectory=alright-mate-backup
+RuntimeDirectoryMode=0700
+ExecStartPre=/bin/sh -eu -c 'invalid() { echo "BACKUP_TOOLS_IMAGE must be a lower-case name@sha256:<64hex> reference" >&2; exit 64; }; reference=$${BACKUP_TOOLS_IMAGE-}; name=$${reference%@sha256:*}; digest=$${reference##*@sha256:}; case "$$name" in ""|[!a-z0-9]*|*[!a-z0-9._:/-]*) invalid ;; esac; if [ "$$reference" != "$$name@sha256:$$digest" ] || [ "$${#digest}" -ne 64 ]; then invalid; fi; case "$$digest" in *[!0-9a-f]*) invalid ;; esac'
+ExecStartPre=/usr/bin/flock --nonblock /run/alright-mate-backup/backup.lock /usr/bin/docker compose --project-name alright-mate --env-file /dev/null -f compose.yaml -f compose.observability.yaml --profile operations run --rm --no-deps --pull never backup-metrics-init
+ExecStart=/usr/bin/flock --nonblock /run/alright-mate-backup/backup.lock /usr/bin/docker compose --project-name alright-mate --env-file /dev/null -f compose.yaml -f compose.observability.yaml --profile operations run --rm --no-deps --pull never backup
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+CapabilityBoundingSet=
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
