@@ -1,8 +1,0 @@
-{
-  "provider": "registry.opentofu.org/hashicorp/aws",
-  "version": "6.55.0",
-  "platforms": [
-    "linux_amd64",
-    "windows_amd64"
-  ]
-}

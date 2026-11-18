@@ -1,7 +1,0 @@
-[Unit]
-Description=Validation-only Docker service stub
-
-[Service]
-Type=oneshot
-ExecStart=/bin/true
-RemainAfterExit=yes

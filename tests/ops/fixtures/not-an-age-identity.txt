@@ -1,2 +1,0 @@
-This public placeholder exists only so Docker Compose can resolve the production secret mount during the local drill.
-The drill uses a short-lived identity in a Docker volume instead.
