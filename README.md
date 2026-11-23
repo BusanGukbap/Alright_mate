@@ -1,13 +1,21 @@
 # Alright, Mate?
 
-A small web app for saving British English expressions. The browser and JSON API share one Go server. PostgreSQL stores the expressions across server restarts.
+영국 영어 표현과 뜻을 한곳에 모아 두는 작은 웹앱입니다. 표현을 추가하고 저장된 목록을 볼 수 있습니다. Go 서버가 화면과 API를 제공하고, PostgreSQL에 저장한 표현은 앱을 다시 시작해도 남습니다.
 
-## Run locally on Windows
+이 프로젝트는 **서비스 운영**과 **AI를 활용한 개발 생산성 향상**을 함께 실습하는 데 사용합니다. 운영 실습에서는 앱을 직접 실행하고 장애를 재현합니다. AI 실습에서는 작은 개발 작업을 맡기는 방법과 검증·재작업까지 포함한 비용을 비교합니다.
 
-You need Go 1.26 or later, PostgreSQL and PowerShell. Open PowerShell in this folder.
+## 메인 화면
 
-1. Create a local PostgreSQL database named `alright_mate`. For example, use pgAdmin or run `createdb -U postgres alright_mate`. Make sure the PostgreSQL service is running.
-2. Apply the schema and start the app. Replace `USERNAME` and `PASSWORD` with your local values and URL-encode special characters in them. If `psql` is outside your PATH, run it from your PostgreSQL installation's `bin` directory by full path.
+![왼쪽에는 저장된 영국 영어 표현 목록, 오른쪽에는 표현과 뜻을 입력하는 폼이 있는 Alright, Mate? 메인 화면](docs/images/main-screen.png)
+
+예시 표현 3개가 표시된 화면입니다. 새 데이터베이스에는 저장된 표현이 없습니다.
+
+## Windows에서 실행하기
+
+Go 1.26 이상, PostgreSQL, PowerShell이 필요합니다. 프로젝트 폴더에서 PowerShell을 엽니다.
+
+1. PostgreSQL 서비스가 실행 중인지 확인하고 `alright_mate` 데이터베이스를 만듭니다. pgAdmin에서 만들거나 `createdb -U postgres alright_mate`를 실행합니다.
+2. 아래 명령의 `USERNAME`과 `PASSWORD`를 로컬 계정 정보로 바꿉니다. 계정 정보에 URL 예약 문자가 있으면 퍼센트 인코딩을 적용합니다. `psql`이 PATH에 없으면 PostgreSQL 설치 폴더의 `bin\psql.exe`를 전체 경로로 실행합니다.
 
    ```powershell
    $env:DATABASE_URL = 'postgres://USERNAME:PASSWORD@127.0.0.1:5432/alright_mate?sslmode=disable'
@@ -15,18 +23,29 @@ You need Go 1.26 or later, PostgreSQL and PowerShell. Open PowerShell in this fo
    go run .
    ```
 
-3. Open [http://127.0.0.1:8080](http://127.0.0.1:8080), add an expression such as “Chuffed to bits” with the meaning “Very pleased”, then restart Go and reload the page.
+3. [http://127.0.0.1:8080](http://127.0.0.1:8080)에서 표현과 뜻을 입력하고 **Save expression**을 누릅니다. Go 앱을 재시작한 다음 페이지를 새로고침해 표현이 남아 있는지 확인합니다.
 
-The app listens on `127.0.0.1:8080` by default. Use the `ADDR` environment variable to change the listening address. Keep the app on a private interface or add access controls before exposing its write endpoint. For installation-specific TLS settings, use the PostgreSQL connection options appropriate to your environment.
+기본 접속 주소는 `127.0.0.1:8080`이며 `ADDR` 환경변수로 바꿀 수 있습니다. 외부 사용자가 접근할 수 있는 주소에 공개하려면 먼저 쓰기 기능에 접근 제어를 설정하세요. 위 데이터베이스 연결 문자열은 로컬 실습 예시입니다. 다른 환경에서는 해당 PostgreSQL의 TLS 설정에 맞춰 연결 옵션을 지정합니다.
 
-## Start the operations exercises
+## 운영 실습
 
-| Check | What to look for |
-| --- | --- |
-| `GET /livez` | HTTP 200 while the HTTP process responds. |
-| `GET /readyz` | HTTP 200 once PostgreSQL and the schema are available. HTTP 503 if either is unavailable. |
-| Request log | One JSON line on standard output with the method, path, status, duration and request ID. Find the same ID in the browser's `X-Request-ID` response header. |
+| 확인할 것 | 정상일 때 | 실습 방법 |
+| --- | --- | --- |
+| `GET /livez` | 앱이 응답하면 HTTP `200` | DB가 멈춰도 앱이 계속 살아 있는지 확인합니다. |
+| `GET /readyz` | DB와 스키마를 사용할 수 있으면 HTTP `200` | 실습용 DB를 끄면 `503`, 다시 켜면 `200`으로 돌아오는지 확인합니다. |
+| JSON 요청 로그 | 메서드, 경로, 상태 코드, 소요 시간, 요청 ID를 표준 출력에 기록 | 브라우저 응답의 `X-Request-ID`와 같은 ID를 로그에서 찾습니다. |
 
-With a **disposable** PostgreSQL instance, stop only that instance and check both endpoints. Try adding an expression and inspect the 503 and related database log. Restart the instance and verify that readiness returns to 200 and existing expressions are visible.
+별도로 만든 실습용 PostgreSQL 인스턴스만 잠시 중지합니다. 그동안 화면에서 표현 저장을 시도해 오류가 표시되는지 확인하고, DB를 다시 켠 뒤 기존 표현을 조회합니다.
 
-Run `go test ./...` for HTTP input validation. To include the real PostgreSQL persistence test, create a dedicated test database, apply `schema.sql`, set `TEST_DATABASE_URL` to its connection URL and run `go test -v ./...`. Run `go build ./...` to build the service. The binary embeds the browser files.
+- `go test ./...`로 HTTP 입력 검증과 로컬 호스트 검사를 실행합니다.
+- PostgreSQL 저장 테스트까지 실행하려면 별도 테스트 DB에 `schema.sql`을 적용하고, 해당 연결 주소를 `TEST_DATABASE_URL`에 설정한 뒤 `go test -v ./...`를 실행합니다. 이 변수가 없으면 저장 테스트는 건너뜁니다.
+- `go build ./...`로 빌드를 확인합니다. 실행 파일에 웹 화면과 JavaScript가 포함됩니다.
+
+## AI 생산성 실습
+
+1. **작업 하나와 완료 기준을 정합니다.** 예를 들어 “저장 실패 메시지를 개선하고, 실패해도 입력한 표현과 뜻이 남는지 확인한다”처럼 화면에서 재현할 수 있게 적습니다.
+2. **AI에 범위와 검증 방법을 함께 줍니다.** 변경할 영역, 유지할 동작, 실행할 검사까지 적고, 결과에는 변경 이유와 실제 실행한 검사를 요청합니다.
+3. **변경을 직접 검토합니다.** diff를 읽고 성공·실패 흐름을 재현합니다. AI가 실행한 검사와 직접 확인한 항목을 구분해 기록합니다.
+4. **절약한 시간과 든 비용을 비교합니다.** 난이도가 비슷한 작업을 AI 없이 한 경우와 AI 도움을 받은 경우로 비교합니다. 목표와 완료 기준은 같은 수준으로 잡고, 지시 작성·구현·리뷰·재작업을 모두 시간에 포함합니다.
+
+이슈나 PR마다 `작업 · AI가 맡은 부분 · 내가 결정한 부분 · 총 소요 시간 · 검증 근거 · 재작업 원인`을 한 줄씩 남겨 보세요. 시간 차이와 함께 놓친 결함이나 재작업의 차이도 비교하면, 다음에 어떤 일을 AI에 맡길지 판단하기 쉽습니다.

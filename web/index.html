@@ -7,94 +7,121 @@
   <style>
     :root {
       color-scheme: light;
+      --paper: #faf6ed;
+      --ink: #28231f;
+      --muted: #554c45;
+      --rule: #d9cfc1;
+      --accent: #7c223c;
+      --serif: Georgia, "Times New Roman", serif;
       font-family: system-ui, sans-serif;
-      color: #253532;
-      background: #f5f3eb;
+      color: var(--ink);
+      background: var(--paper);
     }
 
     * { box-sizing: border-box; }
-
     body { margin: 0; }
 
     main {
-      width: min(66rem, 100% - 2rem);
-      margin: auto;
-      padding: clamp(2rem, 7vw, 5rem) 0 3rem;
+      width: min(62rem, 100% - clamp(2rem, 9vw, 7rem));
+      margin-inline: auto;
+      padding-block: clamp(2rem, 7vw, 5.25rem) 3rem;
     }
+
+    h1, h2, dt { font-family: var(--serif); }
 
     h1 {
       margin: 0 0 clamp(1.5rem, 4vw, 2.5rem);
-      font: 600 clamp(2.65rem, 8vw, 4.75rem)/1.06 Georgia, serif;
-      letter-spacing: -.045em;
+      padding-bottom: .35em;
+      border-bottom: .1875rem solid var(--accent);
+      font-size: clamp(2.3rem, 6vw, 4rem);
+      line-height: 1.05;
+      letter-spacing: -.05em;
     }
 
     .layout {
       display: grid;
-      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+      grid-template-areas: "saved add";
+      gap: clamp(1.5rem, 3vw, 2.5rem);
       align-items: start;
-      gap: 1rem;
     }
 
-    section {
-      padding: clamp(1rem, 3vw, 1.75rem);
-      background: #fffdfa;
-      border: 1px solid #d5dcd3;
-      border-radius: .75rem;
+    .add {
+      grid-area: add;
+      padding-inline-start: clamp(1.5rem, 3vw, 2.5rem);
+      border-inline-start: 1px solid var(--rule);
     }
 
-    h2 { margin: 0 0 1.25rem; font-size: 1.2rem; }
+    .saved { grid-area: saved; }
+
+    h2 {
+      margin: 0 0 1.25rem;
+      font-size: clamp(1.6rem, 3vw, 2.125rem);
+      line-height: 1.15;
+      letter-spacing: -.025em;
+    }
 
     fieldset {
       display: grid;
       gap: 1rem;
       min-inline-size: 0;
       margin: 0;
-      border: 0;
       padding: 0;
+      border: 0;
     }
 
-    label { display: grid; gap: .4rem; font-weight: 600; }
+    label { display: grid; gap: .4rem; font-size: .9375rem; font-weight: 650; }
 
     input, textarea, button {
+      min-block-size: 2.75rem;
+      border-radius: .125rem;
       font: inherit;
-      border-radius: .4rem;
     }
 
     input, textarea {
       width: 100%;
-      padding: .65rem .75rem;
+      padding: .625rem .75rem;
       color: inherit;
-      background: white;
-      border: 1px solid #8a9a92;
+      background: #fffcf6;
+      border: 1px solid #8a7e72;
+      font-weight: 400;
     }
 
     textarea { resize: vertical; }
 
     button {
       justify-self: start;
-      padding: .65rem 1rem;
-      color: white;
-      background: #285748;
+      padding: .625rem 1rem;
+      color: #fff;
+      background: var(--accent);
       border: 1px solid transparent;
+      font-weight: 600;
       cursor: pointer;
     }
 
-    button:hover:enabled { background: #1d4337; }
+    button:hover:enabled { background: #62172e; }
     button:disabled { opacity: .65; cursor: wait; }
-    :focus-visible { outline: 2px solid #25574a; outline-offset: 3px; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
-    [role="status"] { margin: .85rem 0 0; color: #4e6259; }
+    [role="status"] { margin: .85rem 0 0; color: var(--muted); }
     [role="status"]:empty { margin: 0; }
 
     dl { margin: 0; }
-    dl > div { padding: .9rem 0; border-top: 1px solid #d5dcd3; }
-    dl > div:last-child { padding-bottom: 0; }
+    dl > div { padding-block: 1rem; }
+    dl > div:first-child { padding-block-start: 0; }
+    dl > div + div { border-block-start: 1px solid var(--rule); }
+
     dt, dd { overflow-wrap: anywhere; }
-    dt { font-weight: 700; }
-    dd { margin: .3rem 0 0; white-space: pre-wrap; }
+    dt { font-size: 1.4rem; font-weight: 700; line-height: 1.2; }
+    dd { margin: .3rem 0 0; color: var(--muted); line-height: 1.5; white-space: pre-wrap; }
 
     @media (max-width: 45rem) {
-      .layout { grid-template-columns: minmax(0, 1fr); }
+      .layout {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "add" "saved";
+      }
+
+      .add { padding: 0 0 1.5rem; border: 0; border-block-end: 1px solid var(--rule); }
     }
   </style>
   <script src="/app.js" defer></script>
@@ -104,7 +131,7 @@
     <h1>Alright, Mate?</h1>
     <noscript><p>Enable JavaScript to load and save your expressions.</p></noscript>
     <div class="layout">
-      <section aria-labelledby="add-heading">
+      <section class="add" aria-labelledby="add-heading">
         <h2 id="add-heading">Add an expression</h2>
         <form id="expression-form" method="post">
           <fieldset id="expression-fields" disabled>
@@ -121,7 +148,7 @@
           <p id="save-status" role="status"></p>
         </form>
       </section>
-      <section aria-labelledby="saved-heading">
+      <section class="saved" aria-labelledby="saved-heading">
         <h2 id="saved-heading">Saved expressions</h2>
         <p id="list-status" role="status"></p>
         <dl id="expression-list"></dl>
