@@ -4,4 +4,4 @@ resources:
   - ../../base
 images:
   - name: nginx
-    newTag: 1.30.7-alpine
+    newTag: 1.30.8-alpine
